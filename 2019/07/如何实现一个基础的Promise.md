@@ -123,13 +123,16 @@ Promise.prototype.then = function (onFulfilled, onRejected) {
 function resolve(self) {
     if (self.state !== 'pending')
         return;
-
-    self.state = 'fulfilled';
-
     //递归的调用每个Promise的onFulfilled回调
-    if (self.promise) {
-        self.promise.value = self.onFulfilled && self.onFulfilled(self.value);
-        resolve(self.promise);
+    let value;
+    if (self.onFulfilled && self.value) {
+        self.state = 'fulfilled';
+        value = self.onFulfilled(self.value);
+
+        if (self.promise) {
+            self.promise.value = value;
+            resolve(self.promise);
+        }
     }
 }
 
@@ -137,12 +140,16 @@ function reject(self) {
     if (self.state !== 'pending')
         return;
 
-    self.state = 'rejected';
-
     //递归的调用每个Promise的onFulfilled回调
-    if (self.promise) {
-        self.promise.value = self.onRejected && self.onRejected(self.value);
-        reject(self.promise);
+    let value;
+    if (self.onRejected && self.value) {
+        self.state = 'rejected';
+        value = self.onRejected(self.value);
+
+        if (self.promise) {
+            self.promise.value = value;
+            reject(self.promise);
+        }
     }
 }
 
@@ -151,8 +158,12 @@ Promise.prototype.then = function (onFulfilled, onRejected) {
 
     this.onFulfilled = onFulfilled;  //将对应的方法挂载到对应的Promise上
     this.onRejected = onRejected;  //将对应的方法挂载到对应的Promise上
+   
+    resolve(this);
+    reject(this);
+
     this.promise = promise;
-    
+
     return promise;
 }
 ```
@@ -180,13 +191,13 @@ function Promise(fn) {
     this.onRejected = null;  //定义onRejected方法，为了能够执行对应Promise下的回调
 
     fn((value) => {
-        this.value = value;
-        setTimeout(() => {  //异步执行
+        setTimeout(() => {
+            this.value = value;
             resolve(this);
         }, 0);
     }, (reason) => {
-        this.value = reason;
-        setTimeout(() => {  //异步执行
+        setTimeout(() => {
+            this.value = reason;
             reject(this);
         }, 0);
     });
